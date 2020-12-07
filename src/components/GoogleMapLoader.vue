@@ -23,13 +23,13 @@ import { mapGetters, mapMutations } from 'vuex';
 
 export default {
   computed: {
-    ...mapGetters(['mkadPolygonCoords', 'mapConfig', 'markerCoords']),
+    ...mapGetters(['mkadCoords', 'mapConfig', 'markerCoords']),
   },
   data() {
     return {
       google: null,
       map: null,
-      marker: null,
+      directionDisplay: null,
     };
   },
 
@@ -40,19 +40,6 @@ export default {
     });
 
     this.google = googleMapApi;
-    // const service = new this.google.maps.DistanceMatrixService();
-    // const route = await service.getDistanceMatrix(
-    //   {
-    //     origins: ['Moscow', 'Minsk'],
-    //     travelMode: 'DRIVING',
-    //   // transitOptions: TransitOptions,
-    //   // drivingOptions: DrivingOptions,
-    //   // unitSystem: UnitSystem,
-    //   // avoidHighways: Boolean,
-    //   // avoidTolls: Boolean,
-    //   },
-    // );
-    // route.then(res => console.log(res))
 
     this.initializeMap();
     this.createPolygon();
@@ -60,7 +47,7 @@ export default {
   },
 
   methods: {
-    ...mapMutations(['addMarkerCoords']),
+    ...mapMutations(['storeMarkerCoords']),
     // Функция инициализации карты
     initializeMap() {
       const config = this.mapConfig;
@@ -73,35 +60,57 @@ export default {
       const { Polygon } = this.google.maps;
 
       this.mkadPolygon = new Polygon({
-        path: this.mkadPolygonCoords,
+        path: this.mkadCoords,
         map: this.map,
       });
     },
 
-    // Функция рассчета ближайшего расстояния
+    // Функция поиска ближайшей точки мкада и построения маршрута
     determinePath(marker, polygon) {
       const g = this.google;
+      // Определяем массив всех путей до точек на мкаде
       const allPath = polygon.map((p) => {
         const point = new g.maps.LatLng(p);
         return g.maps.geometry.spherical.computeDistanceBetween(marker, point);
       });
+
+      // Находим кратчайший путь
       const shortestPath = Math.min(...allPath);
-      console.log(allPath.indexOf(shortestPath));
+
+      // Его индекс будет соответствовать индексу точки в массиве mkadCoords
+      const closestPointIndex = allPath.indexOf(shortestPath);
+      const closestPoint = this.mkadCoords[closestPointIndex];
+      // console.log(closestPoint)
+      this.calculateAndRenderDirection(marker, closestPoint);
     },
 
-    // drivingPath(a, b) {
-    //   const service = new this.google.maps.DistanceMatrixService();
-    //   service.getDistanceMatrix(
-    //     {
-    //       origins: [a, b],
-    //       travelMode: 'DRIVING',
-    //     // transitOptions: TransitOptions,
-    //     // drivingOptions: DrivingOptions,
-    //     // unitSystem: UnitSystem,
-    //     // avoidHighways: Boolean,
-    //     // avoidTolls: Boolean,
-    //     }, callback);
-    // },
+    // Функция рендеринга пути на машине
+    calculateAndRenderDrivingDirection(origin, destination) {
+      if (this.directionDisplay) {
+        this.directionDisplay.setMap(null);
+      }
+
+      this.directionDisplay = new this.google.maps.DirectionsRenderer();
+      const directionsService = new this.google.maps.DirectionsService();
+      const request = {
+        origin,
+        destination,
+        travelMode: 'DRIVING',
+      };
+
+      this.directionDisplay.setMap(this.map);
+
+      directionsService.route(request, (result, status) => {
+        if (status === 'OK') {
+          this.directionDisplay.setDirections(result);
+        }
+      });
+    },
+
+    // Функция рендеринга пути по воздуху
+    renderStraightDirection() {
+
+    },
 
     // Обработчики событий
     initEventListeners() {
@@ -114,20 +123,20 @@ export default {
         const latLng = new this.google.maps.LatLng(latitude, longitude);
 
         // Добавляем координаты клика в store и local storage
-        this.addMarkerCoords([latitude, longitude]);
+        this.storeMarkerCoords([latitude, longitude]);
         localStorage.setItem('clicksCoords', JSON.stringify(this.markerCoords));
 
         // Если маркера нет на карте – создаем новый
-        if (!this.marker) {
-          this.marker = new this.google.maps.Marker({
-            position: latLng,
-          });
-          this.marker.setMap(this.map);
-        // Если маркер на карте – меняем его положение
-        } else {
-          this.marker.setPosition(latLng);
-        }
-        this.determinePath(latLng, this.mkadPolygonCoords);
+        // if (!this.marker) {
+        //   this.marker = new this.google.maps.Marker({
+        //     position: latLng,
+        //   });
+        //   this.marker.setMap(this.map);
+        // // Если маркер на карте – меняем его положение
+        // } else {
+        //   this.marker.setPosition(latLng);
+        // }
+        this.determinePath(latLng, this.mkadCoords);
       });
     },
   },

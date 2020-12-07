@@ -130,7 +130,7 @@ export default new Vuex.Store({
   },
 
   mutations: {
-    addMarkerCoords: (state, coords) => {
+    storeMarkerCoords: (state, coords) => {
       state.markerCoords.push(coords);
       state.currentMarkerCoords = coords;
     },
@@ -139,12 +139,9 @@ export default new Vuex.Store({
     },
   },
   actions: {
-    determinePath: (point, polygon) => {
-      // const path = polygon.map(el => )
-    },
   },
   getters: {
-    mkadPolygonCoords: (state) => state.mkadCoords,
+    mkadCoords: (state) => state.mkadCoords,
     mapConfig: (state) => state.mapConfig,
     markerCoords: (state) => state.markerCoords,
   },
