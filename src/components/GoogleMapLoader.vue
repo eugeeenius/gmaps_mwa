@@ -8,7 +8,7 @@
 
     </div>
     </div>
-    <template v-if="Boolean(this.google) && Boolean(this.map)">
+    <template v-if="!!this.google && !!this.map">
       <slot
         :google="google"
         :map="map"
@@ -30,13 +30,14 @@ export default {
       google: null,
       map: null,
       directionDisplay: null,
+      apiKey: 'AIzaSyDYeY06dAQKJCXew39kQmKS4Xs327uUocY',
     };
   },
 
   async mounted() {
     // Подключаемся к Gmaps API с помощью плагина
     const googleMapApi = await GoogleMapsApiLoader({
-      apiKey: 'AIzaSyDYeY06dAQKJCXew39kQmKS4Xs327uUocY',
+      apiKey: this.apiKey,
     });
 
     this.google = googleMapApi;
@@ -59,7 +60,7 @@ export default {
     createPolygon() {
       const { Polygon } = this.google.maps;
 
-      this.mkadPolygon = new Polygon({
+      return new Polygon({
         path: this.mkadCoords,
         map: this.map,
       });
@@ -67,11 +68,10 @@ export default {
 
     // Функция поиска ближайшей точки мкада и построения маршрута
     determinePath(marker, polygon) {
-      const g = this.google;
       // Определяем массив всех путей до точек на мкаде
       const allPath = polygon.map((p) => {
-        const point = new g.maps.LatLng(p);
-        return g.maps.geometry.spherical.computeDistanceBetween(marker, point);
+        const point = new this.google.maps.LatLng(p);
+        return this.google.maps.geometry.spherical.computeDistanceBetween(marker, point);
       });
 
       // Находим кратчайший путь
@@ -80,8 +80,9 @@ export default {
       // Его индекс будет соответствовать индексу точки в массиве mkadCoords
       const closestPointIndex = allPath.indexOf(shortestPath);
       const closestPoint = this.mkadCoords[closestPointIndex];
-      // console.log(closestPoint)
-      this.calculateAndRenderDirection(marker, closestPoint);
+
+      this.calculateAndRenderDrivingDirection(marker, closestPoint);
+      this.renderStraightDirection(marker, closestPoint);
     },
 
     // Функция рендеринга пути на машине
@@ -108,8 +109,44 @@ export default {
     },
 
     // Функция рендеринга пути по воздуху
-    renderStraightDirection() {
+    renderStraightDirection(...arr) {
+      const { Polyline } = this.google.maps;
+      if (this.straightPath) {
+        this.straightPath.setMap(null);
+      }
 
+      this.straightPath = new Polyline({
+        path: arr,
+        map: this.map,
+        strokeColor: 'red',
+        strokeOpacity: 0.9,
+      });
+    },
+
+    // Функция добавления баллуна с адресом точки
+    renderInfoWindow(coords, address) {
+      if (this.info) {
+        this.info.setMap(null);
+      }
+      this.info = new this.google.maps.InfoWindow({
+        content: address,
+        position: coords,
+      });
+      this.info.setMap(this.map);
+    },
+
+    // Получаем адрес и рендерим его в баллуне
+    async getAddress(coords) {
+      const geocoder = new this.google.maps.Geocoder();
+
+      await geocoder.geocode({ location: coords }, (result, status) => {
+        if (status === 'OK') {
+          const address = result[0].formatted_address;
+          this.renderInfoWindow(coords, address);
+        } else {
+          this.renderInfoWindow(coords, 'Адрес не найден');
+        }
+      });
     },
 
     // Обработчики событий
@@ -126,17 +163,8 @@ export default {
         this.storeMarkerCoords([latitude, longitude]);
         localStorage.setItem('clicksCoords', JSON.stringify(this.markerCoords));
 
-        // Если маркера нет на карте – создаем новый
-        // if (!this.marker) {
-        //   this.marker = new this.google.maps.Marker({
-        //     position: latLng,
-        //   });
-        //   this.marker.setMap(this.map);
-        // // Если маркер на карте – меняем его положение
-        // } else {
-        //   this.marker.setPosition(latLng);
-        // }
         this.determinePath(latLng, this.mkadCoords);
+        this.getAddress(latLng);
       });
     },
   },
