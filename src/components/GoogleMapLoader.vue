@@ -40,6 +40,19 @@ export default {
     });
 
     this.google = googleMapApi;
+    // const service = new this.google.maps.DistanceMatrixService();
+    // const route = await service.getDistanceMatrix(
+    //   {
+    //     origins: ['Moscow', 'Minsk'],
+    //     travelMode: 'DRIVING',
+    //   // transitOptions: TransitOptions,
+    //   // drivingOptions: DrivingOptions,
+    //   // unitSystem: UnitSystem,
+    //   // avoidHighways: Boolean,
+    //   // avoidTolls: Boolean,
+    //   },
+    // );
+    // route.then(res => console.log(res))
 
     this.initializeMap();
     this.createPolygon();
@@ -65,9 +78,34 @@ export default {
       });
     },
 
+    // Функция рассчета ближайшего расстояния
+    determinePath(marker, polygon) {
+      const g = this.google;
+      const allPath = polygon.map((p) => {
+        const point = new g.maps.LatLng(p);
+        return g.maps.geometry.spherical.computeDistanceBetween(marker, point);
+      });
+      const shortestPath = Math.min(...allPath);
+      console.log(allPath.indexOf(shortestPath));
+    },
+
+    // drivingPath(a, b) {
+    //   const service = new this.google.maps.DistanceMatrixService();
+    //   service.getDistanceMatrix(
+    //     {
+    //       origins: [a, b],
+    //       travelMode: 'DRIVING',
+    //     // transitOptions: TransitOptions,
+    //     // drivingOptions: DrivingOptions,
+    //     // unitSystem: UnitSystem,
+    //     // avoidHighways: Boolean,
+    //     // avoidTolls: Boolean,
+    //     }, callback);
+    // },
+
     // Обработчики событий
     initEventListeners() {
-      /// 1. Обработчик клика
+      /// Обработчик клика
 
       this.map.addListener('click', (event) => {
         // Определяем координаты
@@ -89,6 +127,7 @@ export default {
         } else {
           this.marker.setPosition(latLng);
         }
+        this.determinePath(latLng, this.mkadPolygonCoords);
       });
     },
   },

@@ -1,12 +1,10 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
-import GoogleMapsApiLoader from 'google-maps-api-loader';
 
 Vue.use(Vuex);
 
 export default new Vuex.Store({
   state: {
-    google: null,
     mkadCoords: [
       { lat: 55.774558, lng: 37.842762 },
       { lat: 55.76522, lng: 37.842789 },
@@ -139,18 +137,8 @@ export default new Vuex.Store({
     updatePath: (state, path) => {
       state.path = path;
     },
-    addGoogleMapAPI: (state, api) => {
-      state.google = api;
-    },
   },
   actions: {
-    getApi: async (ctx) => {
-      const googleMapAPI = await GoogleMapsApiLoader({
-        apiKey: 'AIzaSyDYeY06dAQKJCXew39kQmKS4Xs327uUocY',
-      });
-
-      ctx.commit('addGoogleMapAPI', googleMapAPI);
-    },
     determinePath: (point, polygon) => {
       // const path = polygon.map(el => )
     },
